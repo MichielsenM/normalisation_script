@@ -79,10 +79,10 @@ def automized_search(bin_width):
             nbBins += 1
             continue
         ctn_flux = np.nanpercentile(bin_flux, 85)
-        # ctn_wave = bin_wave[find_nearest(bin_flux, ctn_flux)]
-        ctn_wave = wave[rIdx] - bin_width / 2.
+        ctn_wave = bin_wave[find_nearest(bin_flux, ctn_flux)]
+        # ctn_wave = wave[rIdx] - bin_width / 2.
         pointList.append([ctn_wave, ctn_flux])
-        rIdx = lIdx
+        rIdx = find_nearest(wave, ctn_wave - 10.)
         nbBins += 1
 
     drawContinuumPoint(pointList, 'red')
