@@ -8,6 +8,7 @@ import scipy.constants as cte
 
 from scipy.interpolate import splrep,splev
 from astropy.io import fits
+from scipy import interpolate
 
 
 # from http://python4esac.github.io/plotting/specnorm.html
@@ -135,7 +136,7 @@ def automized_search(wave, flux, bin_width):
             bin_wave.append(wave[j])
         bin_flux = np.asarray(bin_flux)
         
-        cont_flux = np.percentile(bin_flux, 85)
+        cont_flux = np.nanpercentile(bin_flux, 85)
         index = find_nearest(bin_flux, cont_flux)
         cont_wave = bin_wave[index]
         
@@ -145,18 +146,7 @@ def automized_search(wave, flux, bin_width):
         start_new_bin = cont_wave - 10 # leave 10 angstrom between a continuum point and the start of the next bin
         i = find_nearest(wave, start_new_bin)
         
-#def ignore_lines(wave, flux)
-    #nr_points = 300
-    ##for i in range(0, nr_points):
-        
-    ##for i in range(nr_points, len(wave)-nr_points):
-    
-    #for i in range(0, len(wave)):
-        #if i < nr_points:
-            
-        #elif i>len(wave)-nr_points:
-        
-        #else:
+
 def barycentric_correction(bvcor, wvl, flx):
     print "Applying barycentric correction."
     print "Value found in fits file: BVCOR =", bvcor, " km/s"
@@ -177,7 +167,13 @@ if __name__ == "__main__":
     cont_flux_list = []
     cont_wave_list = []    
     # Get the filename of the spectrum from the command line, and plot it
-    filename = sys.argv[1]
+    
+    print sys.argv
+    if len(sys.argv)!=2:
+        filename = '../observational_school/data/HD89484/00851780_HRF_OBJ_ext_CosmicsRemoved_wavelength_merged_c.fits'
+    else:
+        filename = sys.argv[1]
+    
     if filename.endswith('fits') or filename.endswith('fit'):
         bvcor, wave, flux = read_fits(filename)
     else:
