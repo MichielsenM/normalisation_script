@@ -9,10 +9,6 @@ import scipy.constants as cte
 from scipy.interpolate import splrep, splev
 from astropy.io import fits
 from scipy import interpolate
-<<<<<<< HEAD
-=======
-
->>>>>>> master
 
 # from http://python4esac.github.io/plotting/specnorm.html
 
@@ -173,38 +169,12 @@ def ontype(event):
     plt.draw()
 
 
-<<<<<<< HEAD
 def add_exposures(SNR1, input_wvl_1, input_flux_1, SNR2, input_wvl_2, input_flux_2):
     flux_composed_spectrum = (input_flux_1 + input_flux_2)/2
     wavelength_composed_spectrum = input_wvl_1
     SNR = (SNR1+SNR2)/2 * np.sqrt(2)
     return SNR, wavelength_composed_spectrum, flux_composed_spectrum
 
-=======
-def automized_search(wave, flux, bin_width):
-    i = len(wave)-1
-    while i > 0:
-        low_edge = wave[i]-bin_width
-        low_index= find_nearest(wave, low_edge)
-        
-        bin_wave = []
-        bin_flux = []
-        for j in range(low_index, i):
-            bin_flux.append(flux[j])
-            bin_wave.append(wave[j])
-        bin_flux = np.asarray(bin_flux)
-        
-        cont_flux = np.nanpercentile(bin_flux, 85)
-        index = find_nearest(bin_flux, cont_flux)
-        cont_wave = bin_wave[index]
-        
-        cont_flux_list.append(cont_flux)
-        cont_wave_list.append(cont_wave)     
-            
-        start_new_bin = cont_wave - 10 # leave 10 angstrom between a continuum point and the start of the next bin
-        i = find_nearest(wave, start_new_bin)
-        
->>>>>>> master
 
 def barycentric_correction(bvcor, wvl, flx):
     print "Applying barycentric correction."
@@ -224,7 +194,6 @@ if __name__ == "__main__":
     compose = False
     bary_corr = True
     # Get the filename of the spectrum from the command line, and plot it
-<<<<<<< HEAD
     #filename = sys.argv[1]
     if not compose:
         saveName = "00851884"
@@ -239,17 +208,6 @@ if __name__ == "__main__":
 
         spectrum, = plt.plot(wave,flux,'k-',label='spectrum')
         plt.title(saveName)
-=======
-    
-    print sys.argv
-    if len(sys.argv)!=2:
-        filename = '../observational_school/data/HD89484/00851780_HRF_OBJ_ext_CosmicsRemoved_wavelength_merged_c.fits'
-    else:
-        filename = sys.argv[1]
-    
-    if filename.endswith('fits') or filename.endswith('fit'):
-        bvcor, wave, flux = read_fits(filename)
->>>>>>> master
     else:
         saveName = "SAVENAME"
         filename = "PATH1"
@@ -275,4 +233,4 @@ if __name__ == "__main__":
     plt.gcf().canvas.mpl_connect('button_press_event',onclick)
     plt.gcf().canvas.mpl_connect('pick_event',onpick)
     
-    plt.show() # show the window
+plt.show() # show the window
