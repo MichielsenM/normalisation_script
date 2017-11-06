@@ -12,6 +12,20 @@ from scipy import interpolate
 
 # from http://python4esac.github.io/plotting/specnorm.html
 
+def make_plot(continuum):
+    f, axarr = plt.subplots(2, sharex=True)
+    axarr[0].plot(wave,flux,'k-',label='spectrum')
+    axarr[0].plot(wave,continuum,'r-',lw=2,label='Continuum')
+    axarr[0].set_title('Continuum fit')
+    axarr[0].legend(loc='best')
+    axarr[1].plot(wave,flux/continuum,'k-',label='Normalised spectrum')
+    axarr[1].axhline(1.01, label='1% margin')
+    axarr[1].axhline(0.99)
+    axarr[1].set_ylim([-0.1,1.1])
+    axarr[1].set_title('Normalized')
+    axarr[1].legend(loc='best')
+    plt.show()
+    
 def read_fits(fname):
     """
     Reads fits file
@@ -64,7 +78,7 @@ def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
     return idx
 
-def automized_search(bin_width):
+def automized_search(bin_width):    #bin_width in angstrom
     rIdx = len(wave)-1
     nbBins = 1
     pointList = []
@@ -80,15 +94,13 @@ def automized_search(bin_width):
             continue
         ctn_flux = np.nanpercentile(bin_flux, 85)
         ctn_wave = bin_wave[find_nearest(bin_flux, ctn_flux)]
-        # ctn_wave = wave[rIdx] - bin_width / 2.
         pointList.append([ctn_wave, ctn_flux])
-        rIdx = find_nearest(wave, ctn_wave - 10.)
+        rIdx = find_nearest(wave, ctn_wave - 10.) # leave 10 angstrom between a continuum point and the start of the next bin
         nbBins += 1
 
     drawContinuumPoint(pointList, 'red')
-    plt.show()
-
-
+    return pointList
+    
 def onpick(event):
     # when the user clicks right on a continuum point, remove it
     if event.mouseevent.button==3:
@@ -137,6 +149,7 @@ def ontype(event):
             plt.plot(wave,flux/continuum,'k-',label='normalised')
             plt.axhline(1.01)
             plt.axhline(0.99)
+            make_plot(continuum)
 
     # when the user hits 'r': clear the axes and plot the original spectrum
     elif event.key=='r':
@@ -219,4 +232,5 @@ if __name__ == "__main__":
     plt.gcf().canvas.mpl_connect('key_press_event',ontype)
     plt.gcf().canvas.mpl_connect('button_press_event',onclick)
     plt.gcf().canvas.mpl_connect('pick_event',onpick)
+    
     plt.show() # show the window
