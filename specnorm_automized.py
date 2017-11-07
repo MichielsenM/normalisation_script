@@ -145,7 +145,7 @@ def ontype(event):
                 continuum = artist.get_data()[1]
                 break
         if continuum is not None:
-            plt.cla()
+            #plt.cla()
             plt.plot(wave,flux/continuum,'k-',label='normalised')
             plt.axhline(1.01)
             plt.axhline(0.99)
