@@ -136,6 +136,38 @@ def ontype(event):
         continuum = splev(wave,spline)
         plt.plot(wave,continuum,'r-',lw=2,label='continuum')
 
+    #when the user hits 'e', export the spline knotpoints to a file
+    elif event.key=='e':
+        cont_pnt_coord = []
+        for artist in plt.gca().get_children():
+            if hasattr(artist,'get_label') and artist.get_label()=='cont_pnt':
+                cont_pnt_coord.append(artist.get_data())
+        cont_pnt_coord = np.array(cont_pnt_coord)[...,0]
+        sort_array = np.argsort(cont_pnt_coord[:,0])
+        x,y = cont_pnt_coord[sort_array].T
+        X = np.transpose(np.vstack((x,y)))
+        np.savetxt('spectrum.knotpoints',X,delimiter=' ')
+        print 'Knotpoints exported'
+        
+        #when the user hits 'i', import BOTH WAVELENGTH AND FLUX as points to be plotted
+    if event.key=='i':
+        name = 'spectrum.knotpoints'
+        wl,fl = np.loadtxt(name,unpack=True)
+        plt.plot(wl,fl,'ro',ms=5,picker=5,label='cont_pnt')
+        print 'Loaded wavelengths and flux'
+	
+        #when the user hits 'l', import ONLY WAVELENGTH and calculate flux as points to be plotted
+    if event.key=='l':
+        name = 'spectrum.knotpoints'
+        wl,fl = np.loadtxt(name,unpack=True)
+        for x in wl:
+            x_low = x-.25
+            x_up = x+.25
+            f = flux[(x_low<=wave) & (wave<=x_up)]
+            y = np.median(f)
+            plt.plot(x,y,'ro',ms=5,picker=5,label='cont_pnt')
+        print 'Loaded wavelengths and calculated flux'
+ 
     # when the user hits 'n' and a spline-continuum is fitted, normalise the
     # spectrum
     elif event.key=='n':
