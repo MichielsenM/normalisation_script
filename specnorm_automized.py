@@ -2,11 +2,13 @@
 import sys
 import os
 
+
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.constants as cte
 
 from scipy.interpolate import splrep, splev
+from scipy.ndimage.filters import percentile_filter
 from astropy.io import fits
 from scipy import interpolate
 
@@ -14,11 +16,22 @@ from scipy import interpolate
 
 def make_plot(continuum):
     f, axarr = plt.subplots(2, sharex=True)
+    
+    
+    ##Opens up the FITS file 
+    #c = fits.open('../Data/ref25000.fits')
+    #d = c[0].data        
+    #header = c[0].header
+    #samp = list((np.arange(header['naxis1']) - (int(header['crpix1']) - 1)) * header['cdelt1'] + header['crval1']) 
+    #lower = find_nearest(samp, wave[0])
+    #upper = find_nearest(samp, wave[-1])
+    
     axarr[0].plot(wave,flux,'k-',label='spectrum')
     axarr[0].plot(wave,continuum,'r-',lw=2,label='Continuum')
     axarr[0].set_title('Continuum fit')
     axarr[0].legend(loc='best')
     axarr[1].plot(wave,flux/continuum,'k-',label='Normalised spectrum')
+    #axarr[1].plot(samp[lower:upper], d[lower:upper], 'r-', label='Synthetic spectrum')
     axarr[1].axhline(1.01, label='1% margin')
     axarr[1].axhline(0.99)
     axarr[1].set_ylim([-0.1,1.1])
@@ -33,13 +46,18 @@ def read_fits(fname):
     :return: wave   |   Numpy array containing wavelengths
              flux   |   Numpy array containing fluxes
     """
-    with fits.open(fname) as hdu:
-        hdr = hdu[0].header
-        flux = hdu[0].data
-        wave = np.arange(hdr['naxis1']) * hdr['cdelt1'] + hdr['crval1']
-        bvcor = hdr['BVCOR']
-        SNR = hdr['SNR50']
-        return SNR, bvcor, wave, flux
+    if fname.endswith('.fits'):
+        with fits.open(fname) as hdu:
+            hdr = hdu[0].header
+            flux = hdu[0].data
+            wave = np.arange(hdr['naxis1']) * hdr['cdelt1'] + hdr['crval1']
+            bvcor = hdr['BVCOR']
+            SNR = hdr['SNR50']
+            print "SNR of spectrum:", SNR
+            return SNR, bvcor, wave, flux
+    else:
+        wave, flux = np.loadtxt(fname, unpack=True)
+        return 0, 0, wave, flux
 
 def onclick(event):
     """
@@ -78,7 +96,7 @@ def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
     return idx
 
-def automized_search(bin_width):    #bin_width in angstrom
+def automized_search(wave, flux, bin_width):    #bin_width in angstrom
     rIdx = len(wave)-1
     nbBins = 1
     pointList = []
@@ -98,8 +116,7 @@ def automized_search(bin_width):    #bin_width in angstrom
         rIdx = find_nearest(wave, ctn_wave - 10.) # leave 10 angstrom between a continuum point and the start of the next bin
         nbBins += 1
 
-    drawContinuumPoint(pointList, 'red')
-    return pointList
+    return np.array(pointList)
     
 def onpick(event):
     # when the user clicks right on a continuum point, remove it
@@ -113,7 +130,11 @@ def ontype(event):
     # 2. Determine ideal continuum line
     # 3. Draw points
     if event.key=='a':
-        automized_search(20)
+        #pointList = automized_search(wave, flux,5)
+        #drawContinuumPoint(pointList, 'red')
+        secondguess = automized_norm(wave, flux)
+        plt.figure(saveName)
+        drawContinuumPoint(secondguess, 'blue')
 
     # when the user hits enter:
     # 1. Cycle through the artists in the current axes. If it is a continuum
@@ -188,24 +209,62 @@ def barycentric_correction(bvcor, wvl, flx):
     evenlyspacedflux = f(evenlyspacedwvl)
     return evenlyspacedwvl, evenlyspacedflux
 
-
+def pointselect(estimates, wave, flux, continuum):
+    discarded= 0
+    norm     = flux/continuum
+    normest  = []
+    gpi      = []               #good point index
+    
+    for l in estimates[:,0]:
+        normest.append(norm[find_nearest(wave, l)])
+    for i in range(len(normest)-1):
+        if 0.99 < normest[i]< 1.01:
+            gpi.append(i)
+        else:
+            discarded+=1
+          
+    #plt.figure('Normed')
+    #plt.plot(wave, norm, 'k', label='Normed')
+    #plt.plot( estimates[:,0], normest, 'ob', label='Points')
+    #plt.axhline(1.015, label='Accept margin')
+    #plt.axhline(0.985)
+    #plt.legend()
+    #plt.show()  
+    
+    return gpi, discarded
+                
+def automized_norm(wave, flux):
+    binwidth    = 5
+    print 'De-noising '
+    continuum = percentile_filter(flux, 90, 1000)
+    print 'De-noised!'
+    
+    print 'Searching for points'
+    estimates = automized_search(wave, flux, binwidth)
+    gpi, discarded = pointselect(estimates, wave, flux, continuum)
+    secondguess = np.take(estimates,gpi, axis=0)
+    print 'Found points!'
+    print discarded, ' points were discarded'
+        
+    return secondguess
+    
 if __name__ == "__main__":
     print "--- Running automated_normalisation.py ---"
     compose = False
-    bary_corr = True
+    bary_corr = False
     # Get the filename of the spectrum from the command line, and plot it
     #filename = sys.argv[1]
     if not compose:
-        saveName = "00851884"
-        filename = "data/00851884_HRF_OBJ_ext_CosmicsRemoved_wavelength_merged_c.fits"
-
+        saveName = "HD36960"
+        filename = "../Data/correctedspectra/HD 36960_rvcorr.dat"
+        #filename = "../Data/correctedspectra/LS III +57 81_rvcorr.dat"
+        
         SNR, bvcor, wave, flux = read_fits(filename)
-		
-        print "SNR of spectrum:", SNR
 
         if bary_corr:
             wave, flux = barycentric_correction(bvcor, wave, flux)
 
+        plt.figure(saveName)
         spectrum, = plt.plot(wave,flux,'k-',label='spectrum')
         plt.title(saveName)
     else:
