@@ -175,7 +175,7 @@ def write_fitsfile(data):
     hdu = fits.PrimaryHDU()
     hdu.header =fits_header
     hdu.data = data
-    hdu.writeto(saveName + '_norm.fits')
+    hdu.writeto(saveName + '_norm.fits', overwrite=True)
 
 
 def add_exposures(SNR1, input_wvl_1, input_flux_1, SNR2, input_wvl_2, input_flux_2):
@@ -209,6 +209,7 @@ if __name__ == "__main__":
         filename = "data/00851884_HRF_OBJ_ext_CosmicsRemoved_wavelength_merged_c.fits"
         if 'log' in filename:
             log_scale = True
+            saveName += "_log"
             
         SNR, bvcor, wave, flux = read_fits(filename)
         print "SNR of spectrum:", SNR
