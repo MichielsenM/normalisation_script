@@ -44,16 +44,17 @@ def read_fits(fname):
 def onclick(event):
     """
     When no toolbar buttons are activated and the user clicks in the plot
-    somewhere, compute median value of spectrum in a 0.5 A window around
-    the x-coordinate of the clicked point. The y-coordinate of the clicked
-    point is not important. The feel-radius (picker) is set to 5 point.
+    somewhere, compute 85th percentile value of spectrum in a window 
+    (with width of 1/10 bin width at both sides) around the x-coordinate of the 
+    clicked point. The y-coordinate of the clicked point is not important. 
+    The feel-radius (picker) is set to 5 point.
     :param event: User event
     :return: Continuum point added to graph when clicking left.
     """
     toolbar = plt.get_current_fig_manager().toolbar
     if event.button==1 and toolbar.mode=='':
-        window = ((event.xdata-.25)<=wave) & (wave<=(event.xdata+.25))
-        y = np.median(flux[window])
+        window = ((event.xdata-bin_width/10.)<=wave) & (wave<=(event.xdata+bin_width/10.))  # on click, use 1/10 of bin width as window
+        y = np.nanpercentile(flux[window], 85)
         plt.plot(event.xdata,y,'ro',ms=5,picker=5,label='cont_pnt')
     plt.draw()
 
@@ -78,7 +79,7 @@ def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
     return idx
 
-def automized_search(bin_width):    #bin_width in angstrom
+def automized_search():
     rIdx = len(wave)-1
     nbBins = 1
     pointList = []
@@ -95,7 +96,7 @@ def automized_search(bin_width):    #bin_width in angstrom
         ctn_flux = np.nanpercentile(bin_flux, 85)
         ctn_wave = bin_wave[find_nearest(bin_flux, ctn_flux)]
         pointList.append([ctn_wave, ctn_flux])
-        rIdx = find_nearest(wave, ctn_wave - 10.) # leave 10 angstrom between a continuum point and the start of the next bin
+        rIdx = find_nearest(wave, ctn_wave - bin_width/2.) # leave half a bin width angstrom between a continuum point and the start of the next bin
         nbBins += 1
 
     drawContinuumPoint(pointList, 'red')
@@ -113,7 +114,7 @@ def ontype(event):
     # 2. Determine ideal continuum line
     # 3. Draw points
     if event.key=='a':
-        automized_search(20)
+        automized_search()
 
     # when the user hits enter:
     # 1. Cycle through the artists in the current axes. If it is a continuum
@@ -164,9 +165,17 @@ def ontype(event):
                 data = np.array(artist.get_data())
                 #np.savetxt(os.path.splitext(filename)[0]+'_norm.dat',data.T)
                 np.savetxt(saveName + '_norm.dat', data.T)
+                write_fitsfile(data)
                 print('Saved to file')
                 break
     plt.draw()
+
+def write_fitsfile(data):
+    fits_header = fits.getheader(filename)
+    hdu = fits.PrimaryHDU()
+    hdu.header =fits_header
+    hdu.data = data
+    hdu.writeto(saveName + '_norm.fits')
 
 
 def add_exposures(SNR1, input_wvl_1, input_flux_1, SNR2, input_wvl_2, input_flux_2):
@@ -192,22 +201,25 @@ def barycentric_correction(bvcor, wvl, flx):
 if __name__ == "__main__":
     print "--- Running automated_normalisation.py ---"
     compose = False
-    bary_corr = True
-    # Get the filename of the spectrum from the command line, and plot it
-    #filename = sys.argv[1]
+    log_scale = False
+    bin_width = 0.003       # bin width for the log scale
+    # Get the filename of the spectrum and plot it
     if not compose:
         saveName = "00851884"
         filename = "data/00851884_HRF_OBJ_ext_CosmicsRemoved_wavelength_merged_c.fits"
-
+        if 'log' in filename:
+            log_scale = True
+            
         SNR, bvcor, wave, flux = read_fits(filename)
-		
         print "SNR of spectrum:", SNR
 
-        if bary_corr:
+        if log_scale is False:
             wave, flux = barycentric_correction(bvcor, wave, flux)
-
+            bin_width = 20          # set bin width in angstrom for linear scale
+            
         spectrum, = plt.plot(wave,flux,'k-',label='spectrum')
         plt.title(saveName)
+        
     else:
         saveName = "SAVENAME"
         filename = "PATH1"
