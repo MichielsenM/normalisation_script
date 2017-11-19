@@ -179,9 +179,23 @@ def write_fitsfile(data):
 
 
 def add_exposures(SNR1, input_wvl_1, input_flux_1, SNR2, input_wvl_2, input_flux_2):
-    flux_composed_spectrum = (input_flux_1 + input_flux_2)/2
-    wavelength_composed_spectrum = input_wvl_1
+    flux_composed_spectrum = []
+    wavelength_composed_spectrum = []
+    for w in range (0, min(len(input_wvl_1), len(input_wvl_2))):
+        cutoff = 4000
+        if log_scale:
+            cutoff = np.log(cutoff)
+        if w > cutoff:
+            if abs(input_wvl_1[w]-input_wvl_2[w]) > 1E-5:
+                print 'add_exposures: wavelengths of input fluxes to be combined are not equal'
+                sys.exit()
+            flux_composed_spectrum.append((input_flux_1[w] + input_flux_2[w])/2)
+            wavelength_composed_spectrum.append(input_wvl_1[w])
+    flux_composed_spectrum = np.asarray(flux_composed_spectrum)
+    #flux_composed_spectrum = (input_flux_1 + input_flux_2)/2
+    #wavelength_composed_spectrum = input_wvl_1
     SNR = (SNR1+SNR2)/2 * np.sqrt(2)
+    
     return SNR, wavelength_composed_spectrum, flux_composed_spectrum
 
 
@@ -225,11 +239,15 @@ if __name__ == "__main__":
         saveName = "SAVENAME"
         filename = "PATH1"
         filename2 = "PATH2"
-
+        if 'log' in filename:
+            log_scale = True
+            saveName += "_log"
+            
         SNR1, bvcor1, wave1, flux1 = read_fits(filename)
         SNR2, bvcor2, wave2, flux2 = read_fits(filename2)
 
-        if bary_corr:
+        if log_scale is False:
+            bin_width = 20          # set bin width in angstrom for linear scale
             wave1_corr, flux1_corr = barycentric_correction(bvcor1, wave1, flux1)
             wave2_corr, flux2_corr = barycentric_correction(bvcor2, wave2, flux2)
             SNR, wave, flux = add_exposures(SNR1, wave1_corr, flux1_corr, SNR2, wave2_corr, flux2_corr)
